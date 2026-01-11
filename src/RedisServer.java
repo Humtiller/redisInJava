@@ -8,13 +8,20 @@ import java.util.Set;
 public class RedisServer{
     public static void main(String[] args) {
         System.out.println("starting server on port 6767");
+        Selector selector=null;
+        ServerSocketChannel serverSocket=null;
         try {
-            Selector selector = Selector.open();
-            ServerSocketChannel serverSocket = ServerSocketChannel.open();
+            selector = Selector.open();
+            serverSocket = ServerSocketChannel.open();
             serverSocket.bind(new InetSocketAddress(6767));
 
             serverSocket.configureBlocking(false);
             serverSocket.register(selector, SelectionKey.OP_ACCEPT);
+
+        }catch (IOException e) {
+            System.out.println("cant start port might be busy");
+        }
+        try{
             while (true) {
                 selector.select();
                 Set<SelectionKey> selectedKeys = selector.selectedKeys();
@@ -22,17 +29,20 @@ public class RedisServer{
 
                 while (iter.hasNext()) {
                     SelectionKey key = iter.next();
+                    iter.remove();
+
+                    if(!key.isValid()) continue;
                     if (key.isAcceptable()) {
                         handleAccept(serverSocket, selector);
                     } else if(key.isReadable()) {
                         handleRead(key);
                     }
-                    iter.remove();
+
                 }
 
             }
         } catch (IOException e) {
-            System.out.println("dont know"); //fix
+            e.printStackTrace();
         }
 
     }
@@ -45,7 +55,7 @@ public class RedisServer{
             channel.register(selector, SelectionKey.OP_READ);
             System.out.println("Registered client for reading.");
         } catch (IOException e) {
-            System.out.println("oopsies");//fix
+            System.out.println("oopsies");
         }
 
     }
@@ -77,7 +87,8 @@ public class RedisServer{
         try {
             clientchannel.write(responseBuff);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            disconnect(key,clientchannel);
+            System.out.println("failed to write ,disconnected");
         }
     }
 
@@ -86,7 +97,7 @@ public class RedisServer{
             key.cancel();
             clientchannel.close();
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            System.out.println("couldnt close properly");
         }
 
 
