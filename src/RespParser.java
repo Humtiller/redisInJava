@@ -2,13 +2,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class RespParser {
-
-
     public static List<String> decode(String data) {
-        List<String> parts = new ArrayList<>();
+        List<String> args = new ArrayList<>();
 
-        if (data == null || data.isEmpty()) return parts;
-
+        if (data == null || data.isEmpty()) return args;
 
         String[] lines = data.split("\r\n");
 
@@ -19,16 +16,16 @@ public class RespParser {
                 if (line.startsWith("$")) {
                     continue;
                 }
-                parts.add(line);
+                args.add(line);
             }
         } else {
 
             String[] tokens = data.trim().split("\\s+");
             for (String token : tokens) {
-                parts.add(token);
+                args.add(token);
             }
         }
 
-        return parts;
+        return args;
     }
 }

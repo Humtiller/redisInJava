@@ -53,7 +53,7 @@ public class RedisServer{
             SocketChannel channel = serverSocket.accept();
             System.out.println("Accepted connection from " + channel.getRemoteAddress());
             channel.configureBlocking(false);
-            channel.register(selector, SelectionKey.OP_READ);
+            channel.register(selector, SelectionKey.OP_READ,new StringBuilder());
             System.out.println("Registered client for reading.");
         } catch (IOException e) {
             System.out.println("oopsies");
@@ -91,18 +91,19 @@ public class RedisServer{
             String command = args.get(0).toUpperCase();
             System.out.println("Command"+ command);
             System.out.println("args: "+args);
+            String response = "+OK\r\n";
+            ByteBuffer responseBuff= ByteBuffer.wrap(response.getBytes());
+            try {
+                clientchannel.write(responseBuff);
+            } catch (IOException e) {
+                disconnect(key,clientchannel);
+                System.out.println("failed to write ,disconnected");
+            }
         }
-        String response = "+OK\r\n";
-
-        ByteBuffer responseBuff= ByteBuffer.wrap(response.getBytes());
-
-        try {
-            clientchannel.write(responseBuff);
-        } catch (IOException e) {
-            disconnect(key,clientchannel);
-            System.out.println("failed to write ,disconnected");
         }
-    }
+
+
+
 
     private static void disconnect(SelectionKey key, SocketChannel clientchannel){
         try {
