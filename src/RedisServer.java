@@ -3,6 +3,7 @@ import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 
 public class RedisServer{
@@ -76,14 +77,25 @@ public class RedisServer{
             disconnect(key,clientchannel);
             return;
         }
+        StringBuilder sb= (StringBuilder) key.attachment();
         buffer.flip();
-        byte[] data = new byte[buffer.remaining()];
-        buffer.get(data);
-        String message = new String(data).trim();
-        System.out.println("Received: " + message);
+        while(buffer.hasRemaining()){
+            sb.append((char)buffer.get());
+        }
+        String content = sb.toString();
+
+        if(content.contains("\n")){
+            List<String> args= RespParser.decode(content);
+            sb.setLength(0);
+            if(args.isEmpty()) return;
+            String command = args.get(0).toUpperCase();
+            System.out.println("Command"+ command);
+            System.out.println("args: "+args);
+        }
         String response = "+OK\r\n";
 
         ByteBuffer responseBuff= ByteBuffer.wrap(response.getBytes());
+
         try {
             clientchannel.write(responseBuff);
         } catch (IOException e) {
