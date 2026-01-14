@@ -104,12 +104,18 @@ public class RedisServer{
                 return "+PONG\r\n";
 
             case "SET":
+                if (args.size() < 3) {
+                    return "-ERR wrong number of arguments for 'set' command\r\n";
+                }
                 String key = args.get(1);
                 String value = args.get(2);
                 cachehe.put(key, value);
                 return "+OK\r\n";
 
             case "GET":
+                if (args.size() < 2) {
+                    return "-ERR wrong number of arguments for 'get' command\r\n";
+                }
                 String getKey = args.get(1);
                 String val = cachehe.get(getKey);
                 if (val == null) {
