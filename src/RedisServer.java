@@ -2,11 +2,10 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.*;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class RedisServer{
+    private static final Map<String, String> cachehe = new HashMap<>();
     public static void main(String[] args) {
         System.out.println("starting server on port 6767");
         Selector selector=null;
@@ -61,49 +60,67 @@ public class RedisServer{
 
     }
 
-    private static void handleRead(SelectionKey key){
-        SocketChannel clientchannel = (SocketChannel)  key.channel();
+    private static void handleRead(SelectionKey key) {
+        SocketChannel clientchannel = (SocketChannel) key.channel();
         ByteBuffer buffer = ByteBuffer.allocate(1024);
-        int bytesread=-1;
-        try{
-            bytesread= clientchannel.read(buffer);
+        int bytesread = - 1;
+        try {
+            bytesread = clientchannel.read(buffer);
         } catch (IOException e) {
-            disconnect(key,clientchannel);
-            System.out.println("client disconnected abruptly"+ e.getMessage());
+            disconnect(key, clientchannel);
+            System.out.println("client disconnected abruptly" + e.getMessage());
             return;
         }
-        if (bytesread==-1){
+        if (bytesread == - 1) {
             System.out.println("Connection closed");
-            disconnect(key,clientchannel);
+            disconnect(key, clientchannel);
             return;
         }
-        StringBuilder sb= (StringBuilder) key.attachment();
+        StringBuilder sb = (StringBuilder) key.attachment();
         buffer.flip();
-        while(buffer.hasRemaining()){
-            sb.append((char)buffer.get());
+        while (buffer.hasRemaining()) {
+            sb.append((char) buffer.get());
         }
         String content = sb.toString();
 
-        if(content.contains("\n")){
-            List<String> args= RespParser.decode(content);
+        if (content.contains("\n")) {
+            List<String> args = RespParser.decode(content);
             sb.setLength(0);
-            if(args.isEmpty()) return;
-            String command = args.get(0).toUpperCase();
-            System.out.println("Command"+ command);
-            System.out.println("args: "+args);
-            String response = "+OK\r\n";
-            ByteBuffer responseBuff= ByteBuffer.wrap(response.getBytes());
+            if (args.isEmpty()) return;
+            String response = executeCommand(args);
             try {
-                clientchannel.write(responseBuff);
+                clientchannel.write(ByteBuffer.wrap(response.getBytes()));
             } catch (IOException e) {
-                disconnect(key,clientchannel);
-                System.out.println("failed to write ,disconnected");
+                disconnect(key, clientchannel);
             }
         }
+    }
+
+    private static String executeCommand(List<String> args) {
+        String cmd = args.get(0).toUpperCase();
+
+        switch (cmd) {
+            case "PING":
+                return "+PONG\r\n";
+
+            case "SET":
+                String key = args.get(1);
+                String value = args.get(2);
+                cachehe.put(key, value);
+                return "+OK\r\n";
+
+            case "GET":
+                String getKey = args.get(1);
+                String val = cachehe.get(getKey);
+                if (val == null) {
+                    return "$-1\r\n";
+                } else {
+                    return "$" + val.length() + "\r\n" + val + "\r\n";
+                }
+            default:
+                return "-ERR unknown command '" + cmd + "'\r\n";
         }
-
-
-
+    }
 
     private static void disconnect(SelectionKey key, SocketChannel clientchannel){
         try {
